@@ -1,13 +1,14 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException} from '@nestjs/common';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
-import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { Between, FindManyOptions, Not, Repository } from 'typeorm';
 import {
   TransactionContents,
   Transaction,
 } from './entities/transaction.entity';
-import { Product } from 'src/products/entities/product.entity';
+import { Product } from '../products/entities/product.entity';
+import { endOfDay, isValid, parseISO, startOfDay } from 'date-fns';
+import { CouponsService } from '../coupons/coupons.service';
 
 @Injectable()
 export class TransactionsService {
@@ -18,6 +19,7 @@ export class TransactionsService {
     private readonly transactionContentsRepository: Repository<TransactionContents>,
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    private readonly couponService : CouponsService
   ) {}
 
   async create(createTransactionDto: CreateTransactionDto) {
@@ -25,7 +27,21 @@ export class TransactionsService {
     await this.productRepository.manager.transaction(async (transactionnEntityManager) => {
 
       const transaction = new Transaction();
-      transaction.total = createTransactionDto.total;
+      
+      const total = createTransactionDto.contents.reduce((total, item)=> total + (item.quantity * item.price) ,0)
+      
+      transaction.total = total;
+
+      //agregando el cupon
+      if(createTransactionDto.coupon){
+        const coupon = await this.couponService.applyCoupon(createTransactionDto.coupon);
+        console.log(coupon);
+        
+        const descuento = (coupon.porcentage * total) / 100;
+        transaction.discount = descuento;
+        transaction.coupon = coupon.name;
+        transaction.total -= descuento;
+      }
 
       for (const contents of createTransactionDto.contents) {
         const product = await transactionnEntityManager.findOneBy(Product,{id: contents.productId,});       
@@ -62,19 +78,77 @@ export class TransactionsService {
     return 'Venta alamcenada correctamente';
   }
 
-  findAll() {
-    return `This action returns all transactions`;
+  findAll(created_at?: string) {
+    const options : FindManyOptions<Transaction> = {
+      relations: {
+        contents: true
+      }
+    }
+
+    if(created_at){
+      const date = parseISO(created_at) //<-convierte a fecha
+      if(!isValid(date)){
+        throw new BadRequestException('La fecha no es valida')
+      }
+
+      const startDay = startOfDay(date) 
+      const endDay = endOfDay(date)
+
+      options.where = {
+        created_at: Between(startDay, endDay),
+      }
+    
+    }
+    
+    return this.transactionRepository.find(options);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} transaction`;
+  async findOne(id: number) {
+
+    const transaction = await this.transactionRepository.findOne({
+      where: {
+        id
+      },
+      relations: {
+        contents: true
+      }
+    })
+
+    if(!transaction){
+      throw new NotFoundException('La venta no existe')
+    }
+
+    return transaction;
   }
 
-  update(id: number, updateTransactionDto: UpdateTransactionDto) {
-    return `This action updates a #${id} transaction`;
-  }
 
-  remove(id: number) {
-    return `This action removes a #${id} transaction`;
+  async remove(id: number) {
+    const transaction = await this.findOne(id)
+
+    for(const contents of transaction.contents){
+
+      //consuta el producto
+      const product = await this.productRepository.findOneBy(
+        {
+          id: contents.product.id
+        }
+      )
+      
+      product.stock += contents.quantity;
+
+      await this.productRepository.save(product)
+
+      const transactionContentes = await this.transactionContentsRepository.findOneBy(
+        {
+          id:contents.id,
+        }
+      )
+      await this.transactionContentsRepository.remove(transactionContentes)
+    
+    }
+
+    await this.transactionRepository.remove(transaction)
+
+    return {message: `Venta con la transacción: ${id}, eliminada correctamente`};
   }
 }

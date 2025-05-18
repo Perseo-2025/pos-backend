@@ -1,4 +1,4 @@
-import { Product } from "src/products/entities/product.entity";
+import { Product } from "../../products/entities/product.entity";
 import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 // aqui existe una relación inversa
@@ -11,6 +11,13 @@ export class Transaction {
 
     @Column('decimal')
     total: number;
+
+    //agregando el cupo
+    @Column({type: 'varchar', length: 50, nullable: true})
+    coupon: string;
+
+    @Column({type: 'decimal', default: 0})
+    discount: number; //descuento aplicado
 
     @Column({type: 'timestamp', default: () => 'CURRENT_TIMESTAMP(6)'})
     created_at: Date;

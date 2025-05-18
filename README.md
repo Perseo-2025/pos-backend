@@ -22,19 +22,19 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+## 🏷️ Punto de venta
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
 ## Installation
 
 ```bash
-$ git clone 
+$ git clone https://github.com/Perseo-2025/pos-backend.git
 ```
 ## Instalar node
 
 ```bash
-$ pnpm i 
+$ pnpm install
 ```
 
 ## Running the app
@@ -50,10 +50,10 @@ $ pnpm run start:dev
 $ pnpm run start:prod
 ```
 ## Data Base 
-En table plus crear una base de datos con postgresql, reemplaza el .env por tus credencuales
+
 
 ```bash
-$ pnpm i 
+En table plus crear una base de datos con postgresql, reemplaza el .env por tus credenciales.
 ```
 
 ## Test
