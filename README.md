@@ -68,6 +68,8 @@ $ pnpm run test:e2e
 # test coverage
 $ pnpm run test:cov
 ```
+## Swagger UI
+$ url: http://localhost:3000/docs
 
 ## Support
 
